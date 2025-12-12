@@ -1,7 +1,10 @@
 import requests
 import pandas as pd
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
+from collections import namedtuple
+from sklearn.cluster import MiniBatchKMeans
 
 API_KEY = "181722d95acd0d6f4074de4f524407ed"
 TOP_N_ACTORS = 100
@@ -52,10 +55,18 @@ def count_items(df : pd.DataFrame , col : str) :
     
 def ones_hot_vector(most_common_items , movie_items):
     if isinstance(movie_items , list) :
-        return [1 if item in movie_items else 0 for item in most_common_items]
+        return [1 if item in movie_items else 0 for item , _ in most_common_items]
     else :
-        return [1 if item == movie_items else 0 for item in most_common_items]
+        return [1 if item == movie_items else 0 for item , _ in most_common_items]
 
+def create_ones_hot_np_matrix(df ,most_common_items , col):
+    items_list = []
+
+    for movie in df.itertuples(index=False) :
+        movie_items = getattr(movie , col)
+        items_list.append(ones_hot_vector(most_common_items , movie_items))
+    
+    return np.vstack(items_list)
 
 movies = []
 for p in range(1,10):
@@ -67,6 +78,19 @@ df = pd.DataFrame(movies)[[
     "director"
 ]]
 
+directors = count_items(df , 'director')
+most_common_direct = directors.most_common(TOP_M_DIRECTORS)
 
+actors = count_items(df , "actors")
+most_common_act = actors.most_common(TOP_N_ACTORS)
+
+generas = count_items(df , 'genre_ids')
+most_common_gene = generas.most_common(n = None)
+
+dir_mat = create_ones_hot_np_matrix(df , most_common_direct , 'director')
+act_mat = create_ones_hot_np_matrix(df , most_common_act , 'actors')
+gen_mat = create_ones_hot_np_matrix(df , most_common_gene , 'genre_ids')
+
+X = np.hstack(dir_mat , act_mat , gen_mat)
 
 
