@@ -30,21 +30,31 @@ def best_movies_from_api(indx:int):
         movies.append(movie)
     return movies
 
-def count_all_actors_directors(df : pd.DataFrame) :
-    actors_list = df['actors'].to_list()
-    directors_list = df['director'].to_list()
+def count_items(df : pd.DataFrame , col : str) :
+    """the func calaculate all occurances of actors , directors , generes , etc ...
+        it's designated to calc 1'hot vector later on
+    Args:
+        df (pd.DataFrame)
+        col (str)
+
+    Returns:
+        Counter dict: {item id  : occurances}
+    """
+    all_items= []
+    for value in df[col] :
+        if isinstance(value , list):
+            all_items.extend(value)
+        else :
+            all_items.append(value)
     
-    all_actors = []
-    for movie_actors in actors_list:
-        all_actors.extend(movie_actors)
     
-    actors_counter = Counter(all_actors) 
-    directors_counter = Counter(directors_list)
+    return Counter(all_items)
     
-    return actors_counter.most_common(TOP_N_ACTORS) , directors_counter.most_common(TOP_M_DIRECTORS)
-    
-def ones_hot_vector(most_common , item_list):
-    return [1 if item in item_list else 0 for item in most_common]
+def ones_hot_vector(most_common_items , movie_items):
+    if isinstance(movie_items , list) :
+        return [1 if item in movie_items else 0 for item in most_common_items]
+    else :
+        return [1 if item == movie_items else 0 for item in most_common_items]
 
 
 movies = []
@@ -57,6 +67,6 @@ df = pd.DataFrame(movies)[[
     "director"
 ]]
 
-most_common_actors , most_common_directors = count_all_actors_directors(df[["actors" , "director"]])
 
-print(most_common_actors ,most_common_directors)
+
+
