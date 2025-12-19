@@ -5,6 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
 from collections import namedtuple
 from sklearn.cluster import MiniBatchKMeans
+from collections import defaultdict
 
 API_KEY = "181722d95acd0d6f4074de4f524407ed"
 TOP_N_ACTORS = 100
@@ -34,15 +35,6 @@ def best_movies_from_api(indx:int):
     return movies
 
 def count_items(df : pd.DataFrame , col : str) :
-    """the func calaculate all occurances of actors , directors , generes , etc ...
-        it's designated to calc 1'hot vector later on
-    Args:
-        df (pd.DataFrame)
-        col (str)
-
-    Returns:
-        Counter dict: {item id  : occurances}
-    """
     all_items= []
     for value in df[col] :
         if isinstance(value , list):
@@ -68,15 +60,27 @@ def create_ones_hot_np_matrix(df ,most_common_items , col):
     
     return np.vstack(items_list)
 
+def sort_kmeans_to_movie_name(labels :np.ndarray , df : pd.DataFrame) :
+
+    closest_movies = defaultdict(list)
+    for i , center in enumerate(labels):
+        closest_movies[center].append(df.iloc[i])
+    
+    for id , movies in  closest_movies.items():
+        print(f"{id} :  {movies}")
+
 movies = []
+
 for p in range(1,10):
     movies += best_movies_from_api(p)
 df = pd.DataFrame(movies)[[
+    "original_title",
     "id",
     "genre_ids",
     "actors",
     "director"
 ]]
+df = df.drop_duplicates(subset="id").reset_index(drop=True)
 
 directors = count_items(df , 'director')
 most_common_direct = directors.most_common(TOP_M_DIRECTORS)
@@ -91,6 +95,13 @@ dir_mat = create_ones_hot_np_matrix(df , most_common_direct , 'director')
 act_mat = create_ones_hot_np_matrix(df , most_common_act , 'actors')
 gen_mat = create_ones_hot_np_matrix(df , most_common_gene , 'genre_ids')
 
-X = np.hstack(dir_mat , act_mat , gen_mat)
+X = np.hstack(tup=(dir_mat , act_mat , gen_mat))
 
 
+kmeans = MiniBatchKMeans(n_clusters=30,
+                        random_state=0,
+                        batch_size=100,
+                        max_iter=100,
+                        n_init="auto").fit(X)
+
+sort_kmeans_to_movie_name(kmeans.labels_ , df["original_title"])
