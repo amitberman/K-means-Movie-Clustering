@@ -41,3 +41,10 @@
     "Glass Onion: A Knives Out Mystery"
     ],
 * we can see that movies series are clusterd togther which make sence.
+
+## Disclaimer / Third-Party Attribution
+
+This project uses the TMDB (The Movie Database) API.  
+All movie data, metadata, and related content are provided by TMDB and remain the intellectual property of their respective owners.
+
+This project is not affiliated with or endorsed by TMDB and was developed for educational purposes only.
