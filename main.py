@@ -6,6 +6,7 @@ from collections import Counter
 from collections import namedtuple
 from sklearn.cluster import MiniBatchKMeans
 from collections import defaultdict
+import json
 
 API_KEY = "181722d95acd0d6f4074de4f524407ed"
 TOP_N_ACTORS = 100
@@ -60,48 +61,50 @@ def create_ones_hot_np_matrix(df ,most_common_items , col):
     
     return np.vstack(items_list)
 
-def sort_kmeans_to_movie_name(labels :np.ndarray , df : pd.DataFrame) :
+def sort_kmeans_to_movie_name(labels :np.ndarray , series : pd.DataFrame) :
 
     closest_movies = defaultdict(list)
     for i , center in enumerate(labels):
-        closest_movies[center].append(df.iloc[i])
+        closest_movies[str(center)].append(series.iloc[i])
     
-    for id , movies in  closest_movies.items():
-        print(f"{id} :  {movies}")
+    return dict(closest_movies)
 
-movies = []
+if __name__ == "__main__":
+    movies = []
 
-for p in range(1,10):
-    movies += best_movies_from_api(p)
-df = pd.DataFrame(movies)[[
-    "original_title",
-    "id",
-    "genre_ids",
-    "actors",
-    "director"
-]]
-df = df.drop_duplicates(subset="id").reset_index(drop=True)
+    for p in range(1,10):
+        movies += best_movies_from_api(p)
+    df = pd.DataFrame(movies)[[
+        "original_title",
+        "id",
+        "genre_ids",
+        "actors",
+        "director"
+    ]]
+    df = df.drop_duplicates(subset="id").reset_index(drop=True)
 
-directors = count_items(df , 'director')
-most_common_direct = directors.most_common(TOP_M_DIRECTORS)
+    directors = count_items(df , 'director')
+    most_common_direct = directors.most_common(TOP_M_DIRECTORS)
 
-actors = count_items(df , "actors")
-most_common_act = actors.most_common(TOP_N_ACTORS)
+    actors = count_items(df , "actors")
+    most_common_act = actors.most_common(TOP_N_ACTORS)
 
-generas = count_items(df , 'genre_ids')
-most_common_gene = generas.most_common(n = None)
+    generas = count_items(df , 'genre_ids')
+    most_common_gene = generas.most_common(n = None)
 
-dir_mat = create_ones_hot_np_matrix(df , most_common_direct , 'director')
-act_mat = create_ones_hot_np_matrix(df , most_common_act , 'actors')
-gen_mat = create_ones_hot_np_matrix(df , most_common_gene , 'genre_ids')
+    dir_mat = create_ones_hot_np_matrix(df , most_common_direct , 'director')
+    act_mat = create_ones_hot_np_matrix(df , most_common_act , 'actors')
+    gen_mat = create_ones_hot_np_matrix(df , most_common_gene , 'genre_ids')
 
-X = np.hstack(tup=(dir_mat , act_mat , gen_mat))
+    X = np.hstack(tup=(dir_mat , act_mat , gen_mat))
 
 
-kmeans = MiniBatchKMeans(n_clusters=30,
-                        random_state=0,
-                        batch_size=100,
-                        max_iter=100,
-                        n_init="auto").fit(X)
+    kmeans = MiniBatchKMeans(n_clusters=20,
+                            random_state=0,
+                            batch_size=100,
+                            max_iter=100,
+                            n_init="auto").fit(X)
 
-sort_kmeans_to_movie_name(kmeans.labels_ , df["original_title"])
+    sorted_movies = sort_kmeans_to_movie_name(kmeans.labels_ , df["original_title"])
+    with open("movie_clusters_output.json", "w", encoding="utf-8") as f:
+        json.dump(sorted_movies, f, indent=2, ensure_ascii=False)
